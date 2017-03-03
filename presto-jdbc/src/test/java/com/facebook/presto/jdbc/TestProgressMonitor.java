@@ -27,6 +27,8 @@ import io.airlift.http.client.Response;
 import io.airlift.http.client.testing.TestingHttpClient;
 import io.airlift.http.client.testing.TestingResponse;
 import io.airlift.json.JsonCodec;
+import io.airlift.units.DataSize;
+
 import org.testng.annotations.Test;
 
 import java.net.URI;
@@ -75,10 +77,12 @@ public class TestProgressMonitor
                 nextUriId == null ? null : URI.create(format(NEXT_URI, nextUriId)),
                 responseColumns,
                 data,
-                new StatementStats(state, state.equals("QUEUED"), true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null),
+                new StatementStats(state, state.equals("QUEUED"), true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null, new DataSize(0, DataSize.Unit.BYTE)),
                 null,
                 null,
-                null);
+                null,
+            null,
+            null);
 
         return QUERY_RESULTS_CODEC.toJson(queryResults);
     }

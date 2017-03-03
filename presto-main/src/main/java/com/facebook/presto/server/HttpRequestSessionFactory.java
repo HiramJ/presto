@@ -88,6 +88,11 @@ final class HttpRequestSessionFactory
     public HttpRequestSessionFactory(HttpServletRequest servletRequest)
             throws WebApplicationException
     {
+        this(servletRequest, parsePreparedStatementsHeaders(servletRequest));
+    }
+
+    public HttpRequestSessionFactory(HttpServletRequest servletRequest, Map<String, String> preparedStatements)
+    {
         catalog = trimEmptyToNull(servletRequest.getHeader(PRESTO_CATALOG));
         schema = trimEmptyToNull(servletRequest.getHeader(PRESTO_SCHEMA));
         assertRequest((catalog != null) || (schema == null), "Schema is set but catalog is not");
@@ -134,13 +139,13 @@ final class HttpRequestSessionFactory
         }
         this.systemProperties = systemProperties.build();
         this.catalogSessionProperties = catalogSessionProperties.entrySet().stream()
-                .collect(toImmutableMap(Entry::getKey, entry -> ImmutableMap.copyOf(entry.getValue())));
-
-        preparedStatements = parsePreparedStatementsHeaders(servletRequest);
+            .collect(toImmutableMap(Entry::getKey, entry -> ImmutableMap.copyOf(entry.getValue())));
 
         String transactionIdHeader = servletRequest.getHeader(PRESTO_TRANSACTION_ID);
         clientTransactionSupport = transactionIdHeader != null;
         transactionId = parseTransactionId(transactionIdHeader);
+
+        this.preparedStatements = preparedStatements;
     }
 
     @Override

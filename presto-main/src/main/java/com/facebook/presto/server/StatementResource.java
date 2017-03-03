@@ -20,6 +20,7 @@ import com.facebook.presto.client.Column;
 import com.facebook.presto.client.FailureInfo;
 import com.facebook.presto.client.QueryError;
 import com.facebook.presto.client.QueryResults;
+import com.facebook.presto.client.QuerySubmission;
 import com.facebook.presto.client.StageStats;
 import com.facebook.presto.client.StatementStats;
 import com.facebook.presto.execution.QueryInfo;
@@ -39,6 +40,7 @@ import com.facebook.presto.operator.ExchangeClientSupplier;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ErrorCode;
 import com.facebook.presto.spi.Page;
+import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.QueryId;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockEncodingSerde;
@@ -52,6 +54,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
+import io.airlift.json.JsonCodec;
 import io.airlift.log.Logger;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
@@ -98,8 +101,10 @@ import static com.facebook.presto.client.PrestoHeaders.PRESTO_ADDED_PREPARE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CLEAR_SESSION;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CLEAR_TRANSACTION_ID;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_DEALLOCATED_PREPARE;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_PREPARED_STATEMENT_IN_BODY;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_SET_SESSION;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_STARTED_TRANSACTION_ID;
+import static com.facebook.presto.server.ResourceUtil.parseStringToQuerySubmission;
 import static com.facebook.presto.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static com.facebook.presto.util.Failures.toFailure;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -129,18 +134,21 @@ public class StatementResource
 
     private final ConcurrentMap<QueryId, Query> queries = new ConcurrentHashMap<>();
     private final ScheduledExecutorService queryPurger = newSingleThreadScheduledExecutor(threadsNamed("query-purger"));
+    private final JsonCodec<QuerySubmission> querySubmissionCodec;
 
     @Inject
     public StatementResource(
             QueryManager queryManager,
             SessionPropertyManager sessionPropertyManager,
             ExchangeClientSupplier exchangeClientSupplier,
-            BlockEncodingSerde blockEncodingSerde)
+            BlockEncodingSerde blockEncodingSerde,
+            JsonCodec<QuerySubmission> querySubmissionCodec)
     {
         this.queryManager = requireNonNull(queryManager, "queryManager is null");
         this.sessionPropertyManager = requireNonNull(sessionPropertyManager, "sessionPropertyManager is null");
         this.exchangeClientSupplier = requireNonNull(exchangeClientSupplier, "exchangeClientSupplier is null");
         this.blockEncodingSerde = requireNonNull(blockEncodingSerde, "blockEncodingSerde is null");
+        this.querySubmissionCodec = querySubmissionCodec;
 
         queryPurger.scheduleWithFixedDelay(new PurgeQueriesRunnable(queries, queryManager), 200, 200, MILLISECONDS);
     }
@@ -167,19 +175,26 @@ public class StatementResource
                     .build());
         }
 
-        SessionSupplier sessionSupplier = new HttpRequestSessionFactory(servletRequest);
+        try {
+            QuerySubmission querySubmission = parseStringToQuerySubmission(servletRequest, statement, querySubmissionCodec);
+            SessionSupplier sessionSupplier = new HttpRequestSessionFactory(servletRequest, querySubmission.getPreparedStatements());
 
-        ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> { });
-        Query query = new Query(
-                sessionSupplier,
-                statement,
-                queryManager,
-                sessionPropertyManager,
-                exchangeClient,
-                blockEncodingSerde);
-        queries.put(query.getQueryId(), query);
+            ExchangeClient exchangeClient = exchangeClientSupplier.get(deltaMemoryInBytes -> {
+            });
+            Query query = new Query(
+                    sessionSupplier,
+                    querySubmission.getQuery(),
+                    queryManager,
+                    sessionPropertyManager,
+                    exchangeClient,
+                    blockEncodingSerde);
+            queries.put(query.getQueryId(), query);
 
-        return getQueryResults(query, Optional.empty(), uriInfo, new Duration(1, MILLISECONDS));
+            return getQueryResults(query, Optional.empty(), uriInfo, new Duration(1, MILLISECONDS), servletRequest);
+        }
+        catch (PrestoException e) {
+            return Response.serverError().entity(e).build();
+        }
     }
 
     @GET
@@ -189,7 +204,8 @@ public class StatementResource
             @PathParam("queryId") QueryId queryId,
             @PathParam("token") long token,
             @QueryParam("maxWait") Duration maxWait,
-            @Context UriInfo uriInfo)
+            @Context UriInfo uriInfo,
+            @Context HttpServletRequest servletRequest)
             throws InterruptedException
     {
         Query query = queries.get(queryId);
@@ -198,10 +214,15 @@ public class StatementResource
         }
 
         Duration wait = WAIT_ORDERING.min(MAX_WAIT_TIME, maxWait);
-        return getQueryResults(query, Optional.of(token), uriInfo, wait);
+
+        return getQueryResults(query, Optional.of(token), uriInfo, wait, servletRequest);
     }
 
-    private static Response getQueryResults(Query query, Optional<Long> token, UriInfo uriInfo, Duration wait)
+    private static Response getQueryResults(Query query,
+            Optional<Long> token,
+            UriInfo uriInfo,
+            Duration wait,
+            HttpServletRequest servletRequest)
             throws InterruptedException
     {
         QueryResults queryResults;
@@ -216,31 +237,34 @@ public class StatementResource
 
         // add set session properties
         query.getSetSessionProperties().entrySet()
-                .forEach(entry -> response.header(PRESTO_SET_SESSION, entry.getKey() + '=' + entry.getValue()));
+                .forEach(entry -> response.header(PRESTO_SET_SESSION,
+                        entry.getKey() + '=' + entry.getValue()));
 
         // add clear session properties
         query.getResetSessionProperties()
                 .forEach(name -> response.header(PRESTO_CLEAR_SESSION, name));
 
-        // add added prepare statements
-        for (Entry<String, String> entry : query.getAddedPreparedStatements().entrySet()) {
-            String encodedKey = urlEncode(entry.getKey());
-            String encodedValue = urlEncode(entry.getValue());
-            response.header(PRESTO_ADDED_PREPARE, encodedKey + '=' + encodedValue);
-        }
+        if (servletRequest.getHeader(PRESTO_PREPARED_STATEMENT_IN_BODY) == null) {
+            // add added prepare statements
+            for (Entry<String, String> entry : query.getAddedPreparedStatements().entrySet()) {
+                String encodedKey = urlEncode(entry.getKey());
+                String encodedValue = urlEncode(entry.getValue());
+                response.header(PRESTO_ADDED_PREPARE, encodedKey + '=' + encodedValue);
+            }
+            // add deallocated prepare statements
+            for (String name : query.getDeallocatedPreparedStatements()) {
+                response.header(PRESTO_DEALLOCATED_PREPARE, urlEncode(name));
+            }
 
-        // add deallocated prepare statements
-        for (String name : query.getDeallocatedPreparedStatements()) {
-            response.header(PRESTO_DEALLOCATED_PREPARE, urlEncode(name));
-        }
+            // add new transaction ID
+            query.getStartedTransactionId()
+                    .ifPresent(
+                            transactionId -> response.header(PRESTO_STARTED_TRANSACTION_ID, transactionId));
 
-        // add new transaction ID
-        query.getStartedTransactionId()
-                .ifPresent(transactionId -> response.header(PRESTO_STARTED_TRANSACTION_ID, transactionId));
-
-        // add clear transaction ID directive
-        if (query.isClearTransactionId()) {
-            response.header(PRESTO_CLEAR_TRANSACTION_ID, true);
+            // add clear transaction ID directive
+            if (query.isClearTransactionId()) {
+                response.header(PRESTO_CLEAR_TRANSACTION_ID, true);
+            }
         }
 
         return response.build();
@@ -479,7 +503,9 @@ public class StatementResource
                     toStatementStats(queryInfo),
                     toQueryError(queryInfo),
                     queryInfo.getUpdateType(),
-                    updateCount);
+                    updateCount,
+                    addedPreparedStatements,
+                    deallocatedPreparedStatements);
 
             // cache the last results
             if (lastResult != null && lastResult.getNextUri() != null) {
