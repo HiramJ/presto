@@ -23,6 +23,7 @@ public class TurboniumConfig
     private int splitsPerNode = Runtime.getRuntime().availableProcessors();
     private DataSize maxDataPerNode = new DataSize(128, DataSize.Unit.MEGABYTE);
     private DataSize maxTableSizePerNode = new DataSize(64, DataSize.Unit.MEGABYTE);
+    private String dhtTier = "turbonium.test01";
 
     @NotNull
     public int getSplitsPerNode()
@@ -60,6 +61,19 @@ public class TurboniumConfig
     public TurboniumConfig setMaxTableSizePerNode(DataSize maxTableSizePerNode)
     {
         this.maxTableSizePerNode = maxTableSizePerNode;
+        return this;
+    }
+
+    @NotNull
+    public String getDhtTier()
+    {
+        return dhtTier;
+    }
+
+    @Config("dht-tier")
+    public TurboniumConfig setDhtTier(String dhtTier)
+    {
+        this.dhtTier = dhtTier;
         return this;
     }
 }

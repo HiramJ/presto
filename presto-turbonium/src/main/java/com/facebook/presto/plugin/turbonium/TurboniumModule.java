@@ -17,19 +17,30 @@ import com.facebook.presto.plugin.turbonium.config.TurboniumConfigManager;
 import com.facebook.presto.plugin.turbonium.config.UpdateMaxDataPerNodeProcedure;
 import com.facebook.presto.plugin.turbonium.config.UpdateMaxTableSizePerNodeProcedure;
 import com.facebook.presto.plugin.turbonium.config.UpdateSplitsPerNodeProcedure;
+import com.facebook.presto.plugin.turbonium.remote.DhtClientProvider;
+import com.facebook.presto.plugin.turbonium.remote.DhtClientProviderImpl;
+import com.facebook.presto.plugin.turbonium.remote.DhtPageStore;
+import com.facebook.presto.plugin.turbonium.remote.PageStore;
 import com.facebook.presto.plugin.turbonium.systemtables.TurboniumConfigSystemTable;
 import com.facebook.presto.plugin.turbonium.systemtables.TurboniumInfoSystemTable;
 import com.facebook.presto.plugin.turbonium.systemtables.TurboniumTableIdSystemTable;
 import com.facebook.presto.spi.NodeManager;
 import com.facebook.presto.spi.SystemTable;
+import com.facebook.presto.spi.block.BlockEncodingFactory;
+import com.facebook.presto.spi.block.BlockEncodingSerde;
 import com.facebook.presto.spi.procedure.Procedure;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeManager;
+import com.facebook.swift.codec.guice.ThriftCodecModule;
+import com.facebook.swift.fbcode.client.SwiftClientModule;
+import com.facebook.swift.fbcode.smc2.Smc2;
+import com.facebook.swift.service.guice.ThriftClientModule;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.std.FromStringDeserializer;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.MultibindingsScanner;
 import com.google.inject.multibindings.ProvidesIntoSet;
@@ -56,32 +67,6 @@ public class TurboniumModule
         this.nodeManager = requireNonNull(nodeManager, "nodeManager is null");
     }
 
-    @Override
-    public void configure(Binder binder)
-    {
-        binder.install(MultibindingsScanner.asModule());
-        binder.bind(TypeManager.class).toInstance(typeManager);
-        binder.bind(NodeManager.class).toInstance(nodeManager);
-        binder.bind(TurboniumConnector.class).in(Scopes.SINGLETON);
-        binder.bind(TurboniumConnectorId.class).toInstance(new TurboniumConnectorId(connectorId));
-        binder.bind(TurboniumMetadata.class).in(Scopes.SINGLETON);
-        binder.bind(TurboniumSplitManager.class).in(Scopes.SINGLETON);
-        binder.bind(TurboniumPagesStore.class).in(Scopes.SINGLETON);
-        binder.bind(TurboniumPageSourceProvider.class).in(Scopes.SINGLETON);
-        binder.bind(TurboniumPageSinkProvider.class).in(Scopes.SINGLETON);
-        binder.bind(TurboniumNodePartitioningProvider.class).in(Scopes.SINGLETON);
-        configBinder(binder).bindConfig(TurboniumConfig.class);
-        binder.bind(TurboniumConfigManager.class).in(Scopes.SINGLETON);
-        Multibinder<SystemTable> tableBinder = newSetBinder(binder, SystemTable.class);
-        tableBinder.addBinding().to(TurboniumInfoSystemTable.class).in(Scopes.SINGLETON);
-        tableBinder.addBinding().to(TurboniumConfigSystemTable.class).in(Scopes.SINGLETON);
-        tableBinder.addBinding().to(TurboniumTableIdSystemTable.class).in(Scopes.SINGLETON);
-        Multibinder.newSetBinder(binder, Procedure.class);
-        binder.bind(UpdateMaxDataPerNodeProcedure.class).in(Scopes.SINGLETON);
-        binder.bind(UpdateMaxTableSizePerNodeProcedure.class).in(Scopes.SINGLETON);
-        binder.bind(UpdateSplitsPerNodeProcedure.class).in(Scopes.SINGLETON);
-    }
-
     @ProvidesIntoSet
     public static Procedure getUpdateMaxDataPerNodeProcedure(UpdateMaxDataPerNodeProcedure procedure)
     {
@@ -98,6 +83,47 @@ public class TurboniumModule
     public static Procedure getUpdateSplitsPerNodeProcedure(UpdateSplitsPerNodeProcedure procedure)
     {
         return procedure.getProcedure();
+    }
+
+    @Override
+    public void configure(Binder binder)
+    {
+        binder.install(MultibindingsScanner.asModule());
+        binder.install(new SwiftClientModule()
+        {
+            @Override
+            protected void configureClients()
+            {
+                bindThriftClient(Smc2.class).toLocalhost(1421);
+            }
+        });
+        binder.install(new ThriftCodecModule());
+        binder.install(new ThriftClientModule());
+        binder.bind(TypeManager.class).toInstance(typeManager);
+        binder.bind(NodeManager.class).toInstance(nodeManager);
+        binder.bind(TurboniumConnector.class).in(Scopes.SINGLETON);
+        binder.bind(TurboniumConnectorId.class).toInstance(new TurboniumConnectorId(connectorId));
+        binder.bind(TurboniumMetadata.class).in(Scopes.SINGLETON);
+        binder.bind(TurboniumSplitManager.class).in(Scopes.SINGLETON);
+        binder.bind(BlockEncodingManager.class).in(Scopes.SINGLETON);
+        binder.bind(BlockEncodingSerde.class).to(BlockEncodingManager.class).in(Scopes.SINGLETON);
+        newSetBinder(binder, new TypeLiteral<BlockEncodingFactory<?>>() {});
+        binder.bind(DhtClientProvider.class).to(DhtClientProviderImpl.class).in(Scopes.SINGLETON);
+        binder.bind(PageStore.class).to(DhtPageStore.class).in(Scopes.SINGLETON);
+        binder.bind(TurboniumPagesStore.class).in(Scopes.SINGLETON);
+        binder.bind(TurboniumPageSourceProvider.class).in(Scopes.SINGLETON);
+        binder.bind(TurboniumPageSinkProvider.class).in(Scopes.SINGLETON);
+        binder.bind(TurboniumNodePartitioningProvider.class).in(Scopes.SINGLETON);
+        configBinder(binder).bindConfig(TurboniumConfig.class);
+        binder.bind(TurboniumConfigManager.class).in(Scopes.SINGLETON);
+        Multibinder<SystemTable> tableBinder = newSetBinder(binder, SystemTable.class);
+        tableBinder.addBinding().to(TurboniumInfoSystemTable.class).in(Scopes.SINGLETON);
+        tableBinder.addBinding().to(TurboniumConfigSystemTable.class).in(Scopes.SINGLETON);
+        tableBinder.addBinding().to(TurboniumTableIdSystemTable.class).in(Scopes.SINGLETON);
+        Multibinder.newSetBinder(binder, Procedure.class);
+        binder.bind(UpdateMaxDataPerNodeProcedure.class).in(Scopes.SINGLETON);
+        binder.bind(UpdateMaxTableSizePerNodeProcedure.class).in(Scopes.SINGLETON);
+        binder.bind(UpdateSplitsPerNodeProcedure.class).in(Scopes.SINGLETON);
     }
 
     public static final class TypeDeserializer

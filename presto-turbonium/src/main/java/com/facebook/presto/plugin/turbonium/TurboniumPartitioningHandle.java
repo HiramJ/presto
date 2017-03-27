@@ -20,10 +20,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public class TurboniumPartitioningHandle
-    implements ConnectorPartitioningHandle
+        implements ConnectorPartitioningHandle
 {
     private final List<String> bucketToNode;
     private final long splitsPerWorker;
+
     @JsonCreator
     public TurboniumPartitioningHandle(
             @JsonProperty("bucketToNode") List<String> bucketToNode,

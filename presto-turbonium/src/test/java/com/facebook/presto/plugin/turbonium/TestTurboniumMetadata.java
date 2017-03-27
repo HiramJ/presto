@@ -47,7 +47,8 @@ public class TestTurboniumMetadata
     @BeforeMethod
     public void setUp()
     {
-        NodeManager nodeManager = new NodeManager() {
+        NodeManager nodeManager = new NodeManager()
+        {
             @Override
             public Set<Node> getAllNodes()
             {

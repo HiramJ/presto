@@ -28,8 +28,8 @@ public final class TurboniumOutputTableHandle
         implements ConnectorOutputTableHandle
 {
     private final TurboniumTableHandle table;
-    private Set<Long> activeTableIds;
     private final TurboniumConfigSpec memoryConfig;
+    private Set<Long> activeTableIds;
 
     @JsonCreator
     public TurboniumOutputTableHandle(

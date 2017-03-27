@@ -69,9 +69,8 @@ import static java.util.stream.Collectors.toMap;
 public class TurboniumMetadata
         implements ConnectorMetadata
 {
-    private static final Logger log = Logger.get(TurboniumMetadata.class);
     public static final String SCHEMA_NAME = "memory";
-
+    private static final Logger log = Logger.get(TurboniumMetadata.class);
     private final NodeManager nodeManager;
     private final String connectorId;
     private final AtomicLong nextTableId = new AtomicLong();

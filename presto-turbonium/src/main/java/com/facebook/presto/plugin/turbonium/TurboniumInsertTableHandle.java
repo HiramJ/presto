@@ -28,8 +28,8 @@ public class TurboniumInsertTableHandle
         implements ConnectorInsertTableHandle
 {
     private final TurboniumTableHandle table;
-    private Set<Long> activeTableIds;
     private final TurboniumConfigSpec config;
+    private Set<Long> activeTableIds;
 
     @JsonCreator
     public TurboniumInsertTableHandle(

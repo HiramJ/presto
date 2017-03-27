@@ -56,10 +56,56 @@ public class TestTurboniumPagesStore
     private TurboniumPagesStore pagesStore;
     private TurboniumPageSinkProvider pageSinkProvider;
 
+    private static ConnectorOutputTableHandle createTurboniumOutputTableHandle(long tableId, Long... activeTableIds)
+    {
+        return new TurboniumOutputTableHandle(
+                new TurboniumTableHandle(
+                        "test",
+                        "schema",
+                        format("table_%d", tableId),
+                        tableId, ImmutableList.of(),
+                        ImmutableList.of(HostAddress.fromString("localhost:8080")),
+                        turboniumConfig.getSplitsPerNode()),
+                ImmutableSet.copyOf(activeTableIds),
+                turboniumConfig);
+    }
+
+    private static ConnectorInsertTableHandle createTurboniumInsertTableHandle(long tableId, Long[] activeTableIds)
+    {
+        return new TurboniumInsertTableHandle(
+                new TurboniumTableHandle(
+                        "test",
+                        "schema",
+                        format("table_%d", tableId),
+                        tableId,
+                        ImmutableList.of(),
+                        ImmutableList.of(HostAddress.fromString("localhost:8080")),
+                        turboniumConfig.getSplitsPerNode()),
+                ImmutableSet.copyOf(activeTableIds),
+                turboniumConfig);
+    }
+
+    private static Page createPage()
+    {
+        BlockBuilder blockBuilder = BIGINT.createFixedSizeBlockBuilder(1);
+        BIGINT.writeLong(blockBuilder, 42L);
+        return new Page(0, blockBuilder.build());
+    }
+
+    private static Page createOneMegaBytePage()
+    {
+        BlockBuilder blockBuilder = BIGINT.createFixedSizeBlockBuilder(1);
+        while (blockBuilder.getRetainedSizeInBytes() < 1024 * 1024) {
+            BIGINT.writeLong(blockBuilder, 42L);
+        }
+        return new Page(0, blockBuilder.build());
+    }
+
     @BeforeMethod
     public void setUp()
     {
-        NodeManager nodeManager = new NodeManager() {
+        NodeManager nodeManager = new NodeManager()
+        {
             @Override
             public Set<Node> getAllNodes()
             {
@@ -89,8 +135,8 @@ public class TestTurboniumPagesStore
                 new H2DaoProvider(dbConfig).get(),
                 new TurboniumConfig().setMaxDataPerNode(new DataSize(1, DataSize.Unit.MEGABYTE)),
                 nodeManager
-                );
-        pagesStore = new TurboniumPagesStore(turboniumConfigManager);
+        );
+        pagesStore = new TurboniumPagesStore(turboniumConfigManager, null);
         pageSinkProvider = new TurboniumPageSinkProvider(pagesStore, turboniumConfigManager);
     }
 
@@ -175,50 +221,5 @@ public class TestTurboniumPagesStore
                 SESSION,
                 createTurboniumOutputTableHandle(tableId, activeTableIds));
         pageSink.finish();
-    }
-
-    private static ConnectorOutputTableHandle createTurboniumOutputTableHandle(long tableId, Long... activeTableIds)
-    {
-        return new TurboniumOutputTableHandle(
-                new TurboniumTableHandle(
-                        "test",
-                        "schema",
-                        format("table_%d", tableId),
-                        tableId, ImmutableList.of(),
-                        ImmutableList.of(HostAddress.fromString("localhost:8080")),
-                        turboniumConfig.getSplitsPerNode()),
-                ImmutableSet.copyOf(activeTableIds),
-                turboniumConfig);
-    }
-
-    private static ConnectorInsertTableHandle createTurboniumInsertTableHandle(long tableId, Long[] activeTableIds)
-    {
-        return new TurboniumInsertTableHandle(
-                new TurboniumTableHandle(
-                        "test",
-                        "schema",
-                        format("table_%d", tableId),
-                        tableId,
-                        ImmutableList.of(),
-                        ImmutableList.of(HostAddress.fromString("localhost:8080")),
-                        turboniumConfig.getSplitsPerNode()),
-                ImmutableSet.copyOf(activeTableIds),
-                turboniumConfig);
-    }
-
-    private static Page createPage()
-    {
-        BlockBuilder blockBuilder = BIGINT.createFixedSizeBlockBuilder(1);
-        BIGINT.writeLong(blockBuilder, 42L);
-        return new Page(0, blockBuilder.build());
-    }
-
-    private static Page createOneMegaBytePage()
-    {
-        BlockBuilder blockBuilder = BIGINT.createFixedSizeBlockBuilder(1);
-        while (blockBuilder.getRetainedSizeInBytes() < 1024 * 1024) {
-            BIGINT.writeLong(blockBuilder, 42L);
-        }
-        return new Page(0, blockBuilder.build());
     }
 }

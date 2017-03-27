@@ -34,7 +34,7 @@ import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 import static java.util.Objects.requireNonNull;
 
 public class TurboniumConfigSystemTable
-    implements SystemTable
+        implements SystemTable
 {
     private final ConnectorTableMetadata tableMetadata;
     private final String nodeId;

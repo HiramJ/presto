@@ -34,7 +34,7 @@ import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 
 public class TurboniumTableIdSystemTable
-    implements SystemTable
+        implements SystemTable
 {
     private final TurboniumMetadata metadata;
     private final ConnectorTableMetadata tableMetadata;

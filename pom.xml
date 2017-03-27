@@ -112,6 +112,7 @@
         <module>presto-plugin-toolkit</module>
         <module>presto-resource-group-managers</module>
         <module>presto-turbonium</module>
+        <module>presto-dht</module>
     </modules>
 
     <dependencyManagement>

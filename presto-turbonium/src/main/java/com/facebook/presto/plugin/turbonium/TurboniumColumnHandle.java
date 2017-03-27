@@ -50,6 +50,17 @@ public final class TurboniumColumnHandle
         this.columnIndex = columnIndex;
     }
 
+    public static List<TurboniumColumnHandle> extractColumnHandles(List<ColumnMetadata> columns)
+    {
+        ImmutableList.Builder<TurboniumColumnHandle> columnHandles = ImmutableList.builder();
+        int columnIndex = 0;
+        for (ColumnMetadata column : columns) {
+            columnHandles.add(new TurboniumColumnHandle(column, columnIndex));
+            columnIndex++;
+        }
+        return columnHandles.build();
+    }
+
     @JsonProperty
     public String getName()
     {
@@ -92,17 +103,6 @@ public final class TurboniumColumnHandle
         return Objects.equals(this.name, other.name) &&
                 Objects.equals(this.columnType, other.columnType) &&
                 Objects.equals(this.columnIndex, other.columnIndex);
-    }
-
-    public static List<TurboniumColumnHandle> extractColumnHandles(List<ColumnMetadata> columns)
-    {
-        ImmutableList.Builder<TurboniumColumnHandle> columnHandles = ImmutableList.builder();
-        int columnIndex = 0;
-        for (ColumnMetadata column : columns) {
-            columnHandles.add(new TurboniumColumnHandle(column, columnIndex));
-            columnIndex++;
-        }
-        return columnHandles.build();
     }
 
     @Override
