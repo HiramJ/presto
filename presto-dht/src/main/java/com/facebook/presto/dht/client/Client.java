@@ -15,14 +15,17 @@ package com.facebook.presto.dht.client;
 
 import com.facebook.presto.dht.common.Request;
 import com.facebook.presto.dht.common.Response;
+import io.airlift.log.Logger;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
@@ -36,17 +39,20 @@ import java.util.concurrent.Future;
 public class Client
         implements ResponseListener
 {
+    private static final Logger log = Logger.get(Client.class);
     private final Bootstrap bootstrap;
     private final Map<Long, Future<byte[]>> futureMap;
+    private final SocketAddress remoteAddr;
     private Channel channel;
 
     public Client(SocketAddress remoteAddr)
     {
+        this.remoteAddr = remoteAddr;
         this.futureMap = new ConcurrentHashMap<>();
 
         bootstrap = new Bootstrap();
         EventLoopGroup group = new NioEventLoopGroup();
-        final DhtClientHandler clientHandler = new DhtClientHandler(this);
+        final ResponseListener listener = this;
         bootstrap.group(group)
                 .channel(NioSocketChannel.class)
                 .remoteAddress(remoteAddr)
@@ -56,7 +62,7 @@ public class Client
                     protected void initChannel(SocketChannel ch)
                             throws Exception
                     {
-                        ch.pipeline().addLast(new LoggingHandler()).addLast(new LengthFieldBasedFrameDecoder(100 * 1024 * 1024, 0, 4)).addLast(clientHandler);
+                        ch.pipeline().addLast(new LoggingHandler(LogLevel.DEBUG)).addLast(new LengthFieldBasedFrameDecoder(100 * 1024 * 1024, 0, 4)).addLast(new DhtClientHandler(listener));
                     }
                 });
     }
@@ -75,7 +81,16 @@ public class Client
     private Channel getChannel()
     {
         if (channel == null || !channel.isActive()) {
-            channel = bootstrap.connect().awaitUninterruptibly().channel();
+            log.info("Building chanel to %s", remoteAddr);
+            ChannelFuture channelFuture = bootstrap.connect();
+            channel = channelFuture.awaitUninterruptibly().channel();
+            if (channelFuture.cause() != null) {
+                log.error(channelFuture.cause(), "Error happened when building the channel to " + remoteAddr.toString());
+            }
+            if (channel.remoteAddress() == null) {
+                log.warn("Remote address is null, expected: %s", remoteAddr);
+                log.info("The channel future is: %s", channelFuture);
+            }
         }
 
         return channel;
@@ -91,12 +106,12 @@ public class Client
     public Future<byte[]> get(byte[] key)
     {
         Request getRequest = new Request(Request.Type.GET, key, null);
-
-        getChannel().writeAndFlush(getRequest.toBuf());
+        log.info("Send request id: %d to %s and wait for response", getRequest.getId(), getChannel().remoteAddress());
 
         Future<byte[]> resultFuture = new CompletableFuture<>();
-
         futureMap.put(getRequest.getId(), resultFuture);
+
+        getChannel().writeAndFlush(getRequest.toBuf());
 
         return resultFuture;
     }
@@ -105,10 +120,15 @@ public class Client
     public void onResponse(Response response)
     {
         Future<byte[]> respFuture = futureMap.get(response.getId());
+        log.info("Received new response of id: %s", response.getId());
+
         if (respFuture != null) {
             CompletableFuture<byte[]> future = (CompletableFuture<byte[]>) respFuture;
             future.complete(response.getPayload());
             futureMap.remove(response.getId());
+        }
+        else {
+            log.warn("Couldn't find mapping future of response id: %d", response.getId());
         }
     }
 }

@@ -22,6 +22,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.net.InetSocketAddress;
@@ -39,6 +40,7 @@ public class Server
     {
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 58999;
         EventLoopGroup group = new NioEventLoopGroup();
+        final Dht dht = new Dht();
 
         try {
             ServerBootstrap b = new ServerBootstrap();
@@ -51,7 +53,7 @@ public class Server
                         protected void initChannel(SocketChannel ch)
                                 throws Exception
                         {
-                            ch.pipeline().addLast(new LoggingHandler()).addLast(new LengthFieldBasedFrameDecoder(100 * 1024 * 1024, 0, 4)).addLast(new DhtRequestHandler());
+                            ch.pipeline().addLast(new LoggingHandler(LogLevel.DEBUG)).addLast(new LengthFieldBasedFrameDecoder(100 * 1024 * 1024, 0, 4)).addLast(new DhtRequestHandler(dht));
                         }
                     });
 

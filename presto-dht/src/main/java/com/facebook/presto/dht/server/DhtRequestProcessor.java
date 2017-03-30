@@ -16,7 +16,9 @@ package com.facebook.presto.dht.server;
 import com.facebook.presto.dht.common.Request;
 import com.facebook.presto.dht.common.Response;
 
+import java.util.Optional;
+
 public interface DhtRequestProcessor
 {
-    Response process(Request request);
+    Optional<Response> process(Request request);
 }

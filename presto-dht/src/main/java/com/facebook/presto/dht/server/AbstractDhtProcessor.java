@@ -15,19 +15,33 @@ package com.facebook.presto.dht.server;
 
 import com.facebook.presto.dht.common.Request;
 import com.facebook.presto.dht.common.Response;
+import io.airlift.log.Logger;
+
+import java.util.Optional;
 
 public abstract class AbstractDhtProcessor
         implements DhtRequestProcessor
 {
+    private static final Logger log = Logger.get(AbstractDhtProcessor.class);
+
     @Override
-    public Response process(Request request)
+    public Optional<Response> process(Request request)
     {
         byte[] key = request.getKey();
         byte[] value = request.getValue();
         byte[] payload = getResponse(key, value);
 
-        return new Response(request.getId(), payload);
+        log.info("Got request of id: %d", request.getId());
+
+        if (sendResponse()) {
+            return Optional.of(new Response(request.getId(), payload));
+        }
+        else {
+            return Optional.empty();
+        }
     }
 
     protected abstract byte[] getResponse(byte[] key, byte[] value);
+
+    protected abstract boolean sendResponse();
 }

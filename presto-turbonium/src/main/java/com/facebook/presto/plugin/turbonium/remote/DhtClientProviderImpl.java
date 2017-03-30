@@ -45,7 +45,7 @@ public class DhtClientProviderImpl
     @Override
     public DhtClient getClient(int hashId)
     {
-        return clients.get(hashId % clients.size());
+        return clients.get((hashId & 0x7fffffff) % clients.size());
     }
 
     private List<DhtClient> getClients()
@@ -56,7 +56,7 @@ public class DhtClientProviderImpl
             List<Service> services = tier.getServices();
             List<DhtClient> clients = services.stream().map(s -> {
                 InetSocketAddress address = new InetSocketAddress(s.getHostname(), s.getPort());
-                log.info("Added Dht server: %s:%s" + address.getHostName() + address.getPort());
+                log.info("Added Dht server: %s:%s", address.getHostName(), address.getPort());
                 return new DhtClientImpl(address);
             }).collect(Collectors.toList());
 

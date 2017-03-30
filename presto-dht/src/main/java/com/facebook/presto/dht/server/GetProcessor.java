@@ -13,12 +13,15 @@
  */
 package com.facebook.presto.dht.server;
 
+import io.airlift.log.Logger;
+
 import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class GetProcessor
         extends AbstractDhtProcessor
 {
+    private static final Logger log = Logger.get(GetProcessor.class);
     private final Map<ByteBuffer, byte[]> localDht;
 
     public GetProcessor(Map<ByteBuffer, byte[]> localDht)
@@ -29,6 +32,16 @@ public class GetProcessor
     @Override
     protected byte[] getResponse(byte[] key, byte[] value)
     {
-        return localDht.get(ByteBuffer.wrap(key));
+        byte[] resp = localDht.get(ByteBuffer.wrap(key));
+        if (resp == null) {
+            log.warn("Failed to find value on local Dht for key %s", new String(key));
+        }
+        return resp;
+    }
+
+    @Override
+    protected boolean sendResponse()
+    {
+        return true;
     }
 }

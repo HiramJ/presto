@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableMap;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Dht
@@ -37,7 +38,7 @@ public class Dht
     }
 
     @Override
-    public Response process(Request request)
+    public Optional<Response> process(Request request)
     {
         return processors.get(request.getType().ordinal()).process(request);
     }

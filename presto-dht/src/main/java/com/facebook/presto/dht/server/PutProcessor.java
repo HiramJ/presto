@@ -42,4 +42,10 @@ public class PutProcessor
         localDht.put(ByteBuffer.wrap(key), value);
         return SUCCESS;
     }
+
+    @Override
+    protected boolean sendResponse()
+    {
+        return false;
+    }
 }

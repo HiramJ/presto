@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.plugin.turbonium.remote;
 
+import com.facebook.presto.spi.NodeManager;
 import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.block.Block;
@@ -31,6 +32,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.facebook.presto.plugin.turbonium.TurboniumErrorCode.MISSING_DATA;
@@ -42,12 +45,14 @@ public class DhtPageStore
     private final Map<Long, TableInfo> tableInfos;
     private final DhtClientProvider clientProvider;
     private final BlockEncodingSerde encodingManager;
+    private final byte[] nodeId;
 
     @Inject
-    public DhtPageStore(DhtClientProvider clientProvider, BlockEncodingSerde encodingManager)
+    public DhtPageStore(DhtClientProvider clientProvider, BlockEncodingSerde encodingManager, NodeManager nodeManager)
     {
         this.clientProvider = clientProvider;
         this.encodingManager = encodingManager;
+        nodeId = nodeManager.getCurrentNode().getNodeIdentifier().getBytes();
         tableInfos = new ConcurrentHashMap<>();
     }
 
@@ -65,7 +70,7 @@ public class DhtPageStore
 
     private byte[] getLocalId()
     {
-        return "1".getBytes();
+        return nodeId;
     }
 
     @Override
@@ -115,9 +120,14 @@ public class DhtPageStore
             pageFutures.add(client.get(key.getBytes()));
         }
 
+        final int totalPages = pageFutures.size();
+        log.info("Wait to get back all the %d pages", totalPages);
+        final AtomicInteger gotPageCount = new AtomicInteger(0);
+
         List<Page> pages = pageFutures.stream().map(f -> {
             try {
-                byte[] pageBytes = f.get();
+                byte[] pageBytes = f.get(60, TimeUnit.MINUTES);
+                log.info("Got %d of %d pages back...", gotPageCount.incrementAndGet(), totalPages);
                 Slice slice = Slices.wrappedBuffer(pageBytes, 0, pageBytes.length);
 
                 return PageUtil.readRawPage(slice.getInput(), encodingManager);

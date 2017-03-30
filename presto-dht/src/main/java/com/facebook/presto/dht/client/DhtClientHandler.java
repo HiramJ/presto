@@ -15,9 +15,11 @@ package com.facebook.presto.dht.client;
 
 import com.facebook.presto.dht.common.Response;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
+@ChannelHandler.Sharable
 public class DhtClientHandler
         extends SimpleChannelInboundHandler<ByteBuf>
 {

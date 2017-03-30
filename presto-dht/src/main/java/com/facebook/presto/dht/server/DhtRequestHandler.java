@@ -21,6 +21,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
+import java.util.Optional;
+
 @ChannelHandler.Sharable
 public class DhtRequestHandler
         extends ChannelInboundHandlerAdapter
@@ -28,10 +30,9 @@ public class DhtRequestHandler
     private static final Logger log = Logger.get(DhtRequestHandler.class);
     private final Dht dht;
 
-    public DhtRequestHandler()
+    public DhtRequestHandler(Dht dht)
     {
-        log.info("Dht handler created");
-        dht = new Dht();
+        this.dht = dht;
     }
 
     @Override
@@ -40,9 +41,11 @@ public class DhtRequestHandler
         ByteBuf buf = (ByteBuf) msg;
         Request request = Request.fromBuf(buf);
 
-        Response resp = dht.process(request);
+        Optional<Response> resp = dht.process(request);
 
-        ctx.writeAndFlush(resp.toBuf());
+        if (resp.isPresent()) {
+            ctx.writeAndFlush(resp.get().toBuf());
+        }
     }
 
     @Override
