@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.plugin.turbonium;
+package com.facebook.presto.dht.common;
 
 import com.facebook.presto.spi.block.ArrayBlockEncoding;
 import com.facebook.presto.spi.block.BlockEncoding;

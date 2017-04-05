@@ -121,7 +121,8 @@ public class Request
     {
         GET,
         SET,
-        REMOVE;
+        REMOVE,
+        GET_FILTER;
 
         public static Type fromShort(short val)
         {
@@ -132,6 +133,8 @@ public class Request
                     return SET;
                 case 2:
                     return REMOVE;
+                case 3:
+                    return GET_FILTER;
             }
 
             throw new IllegalArgumentException("Unknown type val: " + val);

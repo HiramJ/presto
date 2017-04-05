@@ -15,26 +15,21 @@ package com.facebook.presto.dht.server;
 
 import com.facebook.presto.dht.common.Request;
 import com.facebook.presto.dht.common.Response;
-import com.google.common.collect.ImmutableMap;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class Dht
         implements DhtRequestProcessor
 {
-    private final Map<ByteBuffer, byte[]> localDht;
     private final Map<Integer, DhtRequestProcessor> processors;
 
-    public Dht()
+    @Inject
+    public Dht(@Named("PROCESSORS") Map<Integer, DhtRequestProcessor> processors)
     {
-        this.localDht = new ConcurrentHashMap<>();
-        processors = ImmutableMap.<Integer, DhtRequestProcessor>builder()
-                .put(Request.Type.GET.ordinal(), new GetProcessor(localDht))
-                .put(Request.Type.SET.ordinal(), new PutProcessor(localDht))
-                .build();
+        this.processors = processors;
     }
 
     @Override

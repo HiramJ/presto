@@ -11,17 +11,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.plugin.turbonium.remote;
+package com.facebook.presto.dht.filters;
 
-import com.facebook.presto.dht.filters.PageFilter;
+import com.facebook.presto.spi.Page;
 
-import java.util.concurrent.Future;
-
-public interface DhtClient
+public interface PageFilter
 {
-    Future<?> put(byte[] key, byte[] value);
+    Page filter(Page page);
 
-    Future<byte[]> get(byte[] key);
-
-    Future<byte[]> get(byte[] key, PageFilter filter);
+    byte[] toBytes();
 }

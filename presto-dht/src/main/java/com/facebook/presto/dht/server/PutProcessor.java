@@ -13,6 +13,8 @@
  */
 package com.facebook.presto.dht.server;
 
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import io.airlift.log.Logger;
 
 import java.nio.ByteBuffer;
@@ -25,7 +27,8 @@ public class PutProcessor
     private static final byte[] SUCCESS = null;
     private final Map<ByteBuffer, byte[]> localDht;
 
-    public PutProcessor(Map<ByteBuffer, byte[]> localDht)
+    @Inject
+    public PutProcessor(@Named("DHT") Map<ByteBuffer, byte[]> localDht)
     {
         this.localDht = localDht;
     }

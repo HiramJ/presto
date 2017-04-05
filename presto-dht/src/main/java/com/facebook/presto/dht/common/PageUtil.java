@@ -11,12 +11,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.plugin.turbonium.remote;
+package com.facebook.presto.dht.common;
 
 import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockEncoding;
 import com.facebook.presto.spi.block.BlockEncodingSerde;
+import io.airlift.slice.DynamicSliceOutput;
+import io.airlift.slice.Slice;
 import io.airlift.slice.SliceInput;
 import io.airlift.slice.SliceOutput;
 
@@ -59,5 +61,14 @@ public class PageUtil
         BlockEncoding encoding = block.getEncoding();
         blockEncodingSerde.writeBlockEncoding(output, encoding);
         encoding.writeBlock(output, block);
+    }
+
+    public static byte[] getPageBytes(Page page, BlockEncodingSerde blockEncodingSerde)
+    {
+        SliceOutput output = new DynamicSliceOutput((int) page.getSizeInBytes());
+        PageUtil.writeRawPage(page, output, blockEncodingSerde);
+
+        Slice slice = output.getUnderlyingSlice();
+        return slice.getBytes();
     }
 }

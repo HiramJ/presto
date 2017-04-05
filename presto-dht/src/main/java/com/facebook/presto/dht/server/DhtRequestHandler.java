@@ -15,6 +15,7 @@ package com.facebook.presto.dht.server;
 
 import com.facebook.presto.dht.common.Request;
 import com.facebook.presto.dht.common.Response;
+import com.google.inject.Inject;
 import io.airlift.log.Logger;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -30,6 +31,7 @@ public class DhtRequestHandler
     private static final Logger log = Logger.get(DhtRequestHandler.class);
     private final Dht dht;
 
+    @Inject
     public DhtRequestHandler(Dht dht)
     {
         this.dht = dht;

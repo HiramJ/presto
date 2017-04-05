@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.plugin.turbonium;
 
+import com.facebook.presto.dht.common.BlockEncodingManager;
 import com.facebook.presto.plugin.turbonium.config.TurboniumConfigManager;
 import com.facebook.presto.plugin.turbonium.config.UpdateMaxDataPerNodeProcedure;
 import com.facebook.presto.plugin.turbonium.config.UpdateMaxTableSizePerNodeProcedure;

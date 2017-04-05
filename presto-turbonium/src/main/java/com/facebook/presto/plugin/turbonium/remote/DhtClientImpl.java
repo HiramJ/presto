@@ -14,6 +14,7 @@
 package com.facebook.presto.plugin.turbonium.remote;
 
 import com.facebook.presto.dht.client.Client;
+import com.facebook.presto.dht.filters.PageFilter;
 
 import java.net.SocketAddress;
 import java.util.concurrent.Future;
@@ -43,5 +44,12 @@ public class DhtClientImpl
     public Future<byte[]> get(byte[] key)
     {
         return client.get(key);
+    }
+
+    @Override
+    public Future<byte[]> get(byte[] key, PageFilter filter)
+    {
+        byte[] fitlerBytes = filter.toBytes();
+        return client.get(key, fitlerBytes);
     }
 }

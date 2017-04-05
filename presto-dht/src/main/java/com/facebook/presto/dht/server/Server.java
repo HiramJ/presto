@@ -13,6 +13,8 @@
  */
 package com.facebook.presto.dht.server;
 
+import com.google.inject.Injector;
+import io.airlift.bootstrap.Bootstrap;
 import io.airlift.log.Logger;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -36,11 +38,20 @@ public class Server
     }
 
     public static void main(String[] args)
-            throws InterruptedException
+            throws Exception
     {
+        Bootstrap app = new Bootstrap(new DhtServerModule());
+        Injector injector = app.strictConfig().initialize();
+
         int port = args.length > 0 ? Integer.parseInt(args[0]) : 58999;
         EventLoopGroup group = new NioEventLoopGroup();
-        final Dht dht = new Dht();
+        final Dht dht = injector.getInstance(Dht.class);
+
+//        Request putReuqst = new Request(Request.Type.SET, "key".getBytes(), "value".getBytes());
+//        dht.process(putReuqst);
+//        byte[] nums = {4, 5, 6, 7};
+//        Request getRequest = new Request(Request.Type.GET_FILTER, "key".getBytes(), nums);
+//        dht.process(getRequest);
 
         try {
             ServerBootstrap b = new ServerBootstrap();

@@ -106,6 +106,17 @@ public class Client
     public Future<byte[]> get(byte[] key)
     {
         Request getRequest = new Request(Request.Type.GET, key, null);
+        return get(getRequest);
+    }
+
+    public Future<byte[]> get(byte[] key, byte[] filter)
+    {
+        Request filterRequest = new Request(Request.Type.GET_FILTER, key, filter);
+        return get(filterRequest);
+    }
+
+    private Future<byte[]> get(Request getRequest)
+    {
         log.info("Send request id: %d to %s and wait for response", getRequest.getId(), getChannel().remoteAddress());
 
         Future<byte[]> resultFuture = new CompletableFuture<>();

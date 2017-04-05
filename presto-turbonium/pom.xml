@@ -195,6 +195,11 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>com.facebook.swift</groupId>
             <artifactId>swift-service</artifactId>
             <version>1.26.26</version>

@@ -13,6 +13,9 @@
  */
 package com.facebook.presto.plugin.turbonium.remote;
 
+import com.facebook.presto.dht.common.PageUtil;
+import com.facebook.presto.dht.filters.ColumnBasedFilter;
+import com.facebook.presto.dht.filters.PageFilter;
 import com.facebook.presto.spi.NodeManager;
 import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.PrestoException;
@@ -21,9 +24,7 @@ import com.facebook.presto.spi.block.BlockEncodingSerde;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import io.airlift.log.Logger;
-import io.airlift.slice.DynamicSliceOutput;
 import io.airlift.slice.Slice;
-import io.airlift.slice.SliceOutput;
 import io.airlift.slice.Slices;
 
 import java.util.ArrayList;
@@ -91,18 +92,9 @@ public class DhtPageStore
 
         DhtClient client = clientProvider.getClient(key.hashCode());
 
-        byte[] valBytes = getPageBytes(page);
+        byte[] valBytes = PageUtil.getPageBytes(page, encodingManager);
 
         client.put(key.getBytes(), valBytes);
-    }
-
-    private byte[] getPageBytes(Page page)
-    {
-        SliceOutput output = new DynamicSliceOutput((int) page.getSizeInBytes());
-        PageUtil.writeRawPage(page, output, encodingManager);
-
-        Slice slice = output.getUnderlyingSlice();
-        return slice.getBytes();
     }
 
     @Override
@@ -114,10 +106,11 @@ public class DhtPageStore
         }
         long pageCount = info.getPageCount();
         List<Future<byte[]>> pageFutures = new ArrayList<>();
+        PageFilter filter = new ColumnBasedFilter(columnIndexes);
         for (int i = partNumber; i < pageCount; i += totalParts) {
             PageKey key = new PageKey(tableId, getLocalId(), i);
             DhtClient client = clientProvider.getClient(key.hashCode());
-            pageFutures.add(client.get(key.getBytes()));
+            pageFutures.add(client.get(key.getBytes(), filter));
         }
 
         final int totalPages = pageFutures.size();
@@ -136,7 +129,7 @@ public class DhtPageStore
                 log.error(e, "Failed to get page");
                 return null;
             }
-        }).map(p -> getColumns(p, columnIndexes)).collect(Collectors.toList());
+        }).collect(Collectors.toList());
 
         return pages;
     }
