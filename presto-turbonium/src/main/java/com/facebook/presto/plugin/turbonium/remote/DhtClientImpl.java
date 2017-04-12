@@ -52,4 +52,10 @@ public class DhtClientImpl
         byte[] fitlerBytes = filter.toBytes();
         return client.get(key, fitlerBytes);
     }
+
+    @Override
+    public Future<?> remove(byte[] key)
+    {
+        return client.remove(key);
+    }
 }

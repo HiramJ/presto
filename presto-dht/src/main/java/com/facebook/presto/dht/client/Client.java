@@ -115,6 +115,12 @@ public class Client
         return get(filterRequest);
     }
 
+    public Future<?> remove(byte[] key)
+    {
+        Request removeRequest = new Request(Request.Type.REMOVE, key, null);
+        return getChannel().writeAndFlush(removeRequest.toBuf());
+    }
+
     private Future<byte[]> get(Request getRequest)
     {
         log.info("Send request id: %d to %s and wait for response", getRequest.getId(), getChannel().remoteAddress());

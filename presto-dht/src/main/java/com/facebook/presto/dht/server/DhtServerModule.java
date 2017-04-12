@@ -47,6 +47,7 @@ public class DhtServerModule
                 .put(Request.Type.GET.ordinal(), new GetProcessor(dht))
                 .put(Request.Type.SET.ordinal(), new PutProcessor(dht))
                 .put(Request.Type.GET_FILTER.ordinal(), new GetFilterProcessor(dht, blockEncodingSerde))
+                .put(Request.Type.REMOVE.ordinal(), new RemoveProcessor(dht))
                 .build();
     }
 

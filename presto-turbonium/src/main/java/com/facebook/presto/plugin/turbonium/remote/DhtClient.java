@@ -24,4 +24,6 @@ public interface DhtClient
     Future<byte[]> get(byte[] key);
 
     Future<byte[]> get(byte[] key, PageFilter filter);
+
+    Future<?> remove(byte[] key);
 }

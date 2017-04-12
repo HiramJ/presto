@@ -28,6 +28,8 @@ import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -155,7 +157,26 @@ public class DhtPageStore
     @Override
     public void cleanUp(Set<Long> activeTableIds)
     {
-        // todo: add remove requests
+        if (activeTableIds.isEmpty()) {
+            return;
+        }
+        long latestTableId = Collections.max(activeTableIds);
+
+        for (Iterator<Map.Entry<Long, TableInfo>> infos = tableInfos.entrySet().iterator(); infos.hasNext(); ) {
+            Map.Entry<Long, TableInfo> info = infos.next();
+            Long tableId = info.getKey();
+            if (tableId < latestTableId && !activeTableIds.contains(tableId)) {
+                for (int i = 0; i < info.getValue().getPageCount(); ++i) {
+                    PageKey key = new PageKey(tableId, getLocalId(), i);
+                    DhtClient client = clientProvider.getClient(key.hashCode());
+
+                    client.remove(key.getBytes());
+                }
+
+                log.info("Table: %s removed", info.getValue().toString());
+                infos.remove();
+            }
+        }
     }
 
     private static class TableInfo
