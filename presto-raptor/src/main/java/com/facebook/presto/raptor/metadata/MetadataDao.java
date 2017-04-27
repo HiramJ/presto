@@ -39,6 +39,12 @@ public interface MetadataDao
             "FROM tables t\n" +
             "JOIN columns c ON (t.table_id = c.table_id)\n";
 
+    String TABLE_PREVILEGE_SELECT = "" +
+            "SELECT t.schema_name, t.table_name,\n" +
+            "  p.grantor, p.grantee, p.privilege_mask, p.is_grantable, p.with_hierarchy\n" +
+            "FROM tables t\n" +
+            "JOIN table_privileges p ON (t.table_id = p.table_id)\n";
+
     @SqlQuery(TABLE_INFORMATION_SELECT +
             "WHERE t.table_id = :tableId")
     @Mapper(TableMapper.class)
@@ -303,4 +309,26 @@ public interface MetadataDao
     @SqlUpdate("UPDATE tables SET maintenance_blocked = NULL\n" +
             "WHERE maintenance_blocked IS NOT NULL")
     void unblockAllMaintenance();
+
+    @SqlQuery(TABLE_PREVILEGE_SELECT +
+            "WHERE t.schema_name = :schemaName" +
+            "  AND t.table_name = :tableName" +
+            "  AND p.grantee = :grantee")
+    @Mapper(RaptorGrantInfo.Mapper.class)
+    RaptorGrantInfo getGrantInfo(@Bind("schemaName") String schemaName, @Bind("tableName") String tableName, @Bind("grantee") String grantee);
+
+    @SqlUpdate("INSERT INTO table_privileges (table_id, grantee, grantor, privilege_mask, is_grantable, with_hierarchy)\n" +
+            "VALUES (:tableId, :grantee, :grantor, :privilegeMask, :isGrantable, :withHierarchy)")
+    void insertTablePrivileges(@Bind("tableId") long tableId, @Bind("grantee") String grantee, @Bind("grantor") String grantor,
+            @Bind("privilegeMask") long privilegeMask, @Bind("isGrantable") boolean isGrantable, @Bind("withHierarchy") boolean withHierarchy);
+
+    @SqlUpdate("DELETE from table_privileges\n" +
+            "WHERE table_id = :tableId\n" +
+            "  AND grantee = :grantee")
+    void removeTablePrivileges(@Bind("tableId") long tableId, @Bind("grantee") String grantee);
+
+    @SqlUpdate("UPDATE table_privileges SET privilege_mask = :privilegeMask\n" +
+            "WHERE table_id = :tableId\n" +
+            "  AND grantee = :grantee")
+    void updateTablePrivileges(@Bind("tableId") long tableId, @Bind("grantee") String grantee, @Bind("privilegeMask") long privilegeMask);
 }

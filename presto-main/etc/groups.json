@@ -1,0 +1,8 @@
+{
+  "ADMIN" : {
+    "users" : [ "user1", "user2"]
+  },
+  "USERS" : {
+    "users" : [ "user3", "user4" ]
+  }
+}

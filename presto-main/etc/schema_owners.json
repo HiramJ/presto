@@ -1,0 +1,10 @@
+{
+  "schema2" : {
+    "roles" : [ "ADMIN", "USERS" ],
+    "users" : [ "user5" ]
+  },
+  "schema1" : {
+    "roles" : [ "ADMIN" ],
+    "users" : [ "user5", "user6" ]
+  }
+}
