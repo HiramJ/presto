@@ -103,6 +103,7 @@ import static com.facebook.presto.raptor.RaptorTableProperties.getSortColumns;
 import static com.facebook.presto.raptor.RaptorTableProperties.getTemporalColumn;
 import static com.facebook.presto.raptor.RaptorTableProperties.isOrganized;
 import static com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.RaptorPrivilege.OWNERSHIP;
+import static com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.toMaskValue;
 import static com.facebook.presto.raptor.util.DatabaseUtil.daoTransaction;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.facebook.presto.raptor.util.DatabaseUtil.runIgnoringConstraintViolation;
@@ -904,7 +905,7 @@ public class RaptorMetadata
     {
         Table table = getTable(tableName);
 
-        long maskValue = RaptorPrivilegeInfo.toMaskValue(privileges.stream()
+        long maskValue = toMaskValue(privileges.stream()
                 .map(RaptorPrivilegeInfo::toRaptorPrivilege)
                 .map(p -> new RaptorPrivilegeInfo(p, grantOption))
                 .collect(toImmutableSet()));
@@ -915,7 +916,7 @@ public class RaptorMetadata
             dao.insertTablePrivileges(table.getTableId(), grantee, session.getUser(), maskValue, grantOption, false);
         }
         else {
-            maskValue |= RaptorPrivilegeInfo.toMaskValue(oldGrantInfo.getPrivilegeInfo());
+            maskValue |= toMaskValue(oldGrantInfo.getPrivilegeInfo());
             dao.updateTablePrivileges(table.getTableId(), grantee, maskValue);
         }
     }
@@ -937,9 +938,9 @@ public class RaptorMetadata
         Table table = getTable(tableName);
 
         RaptorGrantInfo oldGrantInfo = dao.getGrantInfo(tableName.getSchemaName(), tableName.getTableName(), grantee);
-        long maskValue = oldGrantInfo == null ? 0 : RaptorPrivilegeInfo.toMaskValue(oldGrantInfo.getPrivilegeInfo());
+        long maskValue = oldGrantInfo == null ? 0 : toMaskValue(oldGrantInfo.getPrivilegeInfo());
 
-        maskValue &= ~RaptorPrivilegeInfo.toMaskValue(privileges.stream()
+        maskValue &= ~toMaskValue(privileges.stream()
                 .map(RaptorPrivilegeInfo::toRaptorPrivilege)
                 .map(p -> new RaptorPrivilegeInfo(p, grantOption))
                 .collect(toImmutableSet()));

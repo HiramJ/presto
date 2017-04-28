@@ -1,10 +1,10 @@
 {
   "schema2" : {
-    "roles" : [ "ADMIN", "USERS" ],
+    "groups" : [ "ADMIN", "USERS" ],
     "users" : [ "user5" ]
   },
   "schema1" : {
-    "roles" : [ "ADMIN" ],
+    "groups" : [ "ADMIN" ],
     "users" : [ "user5", "user6" ]
   }
 }

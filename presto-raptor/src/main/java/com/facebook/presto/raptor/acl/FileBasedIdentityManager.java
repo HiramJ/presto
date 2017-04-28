@@ -34,7 +34,7 @@ public class FileBasedIdentityManager
 {
     private static final String ADMIN_GROUP = "ADMIN";
     private final Map<String, Group> groups;
-    private final Map<String, SchemaAdmins> schemas;
+    private final Map<String, SchemaOwners> schemaOwners;
 
     @Inject
     public FileBasedIdentityManager(FileBasedIdentityConfig config)
@@ -42,7 +42,7 @@ public class FileBasedIdentityManager
         ObjectMapper mapper = new ObjectMapper();
         try {
             this.groups = mapper.readValue(new File(config.getGroupsFileName()), new TypeReference<Map<String, Group>>() {});
-            this.schemas = mapper.readValue(new File(config.getSchemaOwnersFileName()), new TypeReference<Map<String, SchemaAdmins>>() {});
+            this.schemaOwners = mapper.readValue(new File(config.getSchemaOwnersFileName()), new TypeReference<Map<String, SchemaOwners>>() {});
         }
         catch (IOException e) {
             throw new PrestoException(RAPTOR_ERROR, "failed to load identity config", e);
@@ -62,17 +62,17 @@ public class FileBasedIdentityManager
     @Override
     public boolean isDatabaseOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName)
     {
-        SchemaAdmins admins = schemas.get(schemaName);
-        if (admins == null) {
+        SchemaOwners owners = schemaOwners.get(schemaName);
+        if (owners == null) {
             return false;
         }
-        if (admins.getUsers().contains(identity.getUser())) {
+        if (owners.getUsers().contains(identity.getUser())) {
             return true;
         }
 
-        return admins.getRoles().stream()
+        return owners.getGroups().stream()
                 .map(groups::get)
-                .anyMatch(r -> r.hasUser(identity.getUser()));
+                .anyMatch(g -> g.hasUser(identity.getUser()));
     }
 
     private static class Group
@@ -96,21 +96,21 @@ public class FileBasedIdentityManager
         }
     }
 
-    private static class SchemaAdmins
+    private static class SchemaOwners
     {
-        private final Set<String> roles;
+        private final Set<String> groups;
         private final Set<String> users;
 
         @JsonCreator
-        SchemaAdmins(@JsonProperty("groups") Set<String> roles, @JsonProperty("users") Set<String> users)
+        SchemaOwners(@JsonProperty("groups") Set<String> groups, @JsonProperty("users") Set<String> users)
         {
-            this.roles = roles;
+            this.groups = groups;
             this.users = users;
         }
 
-        public Set<String> getRoles()
+        public Set<String> getGroups()
         {
-            return roles;
+            return groups;
         }
 
         public Set<String> getUsers()

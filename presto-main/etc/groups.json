@@ -1,6 +1,6 @@
 {
   "ADMIN" : {
-    "users" : [ "user1", "user2"]
+    "users" : [ "user1", "user2", "hiramj"]
   },
   "USERS" : {
     "users" : [ "user3", "user4" ]
