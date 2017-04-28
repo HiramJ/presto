@@ -24,10 +24,12 @@ import com.facebook.presto.spi.connector.ConnectorAccessControl;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.security.Identity;
 import com.facebook.presto.spi.security.Privilege;
+import com.facebook.presto.spi.security.PrivilegeInfo;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import org.skife.jdbi.v2.IDBI;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -247,27 +249,37 @@ public class RaptorAccessControl
             return true;
         }
 
-        RaptorGrantInfo grantInfo = dao.getGrantInfo(tableName.getSchemaName(), tableName.getTableName(), identity.getUser());
+        List<RaptorGrantInfo> raptorGrantInfos = dao.getGrantInfos(tableName.getSchemaName(), tableName.getTableName(), identity.getUser());
 
-        if (grantInfo == null) {
+        if (raptorGrantInfos == null) {
             return false;
         }
-        Set<RaptorPrivilege> privilegeSet = grantInfo.getPrivilegeInfo().stream()
+
+        Set<RaptorPrivilege> privileges = raptorGrantInfos.stream()
+                .map(RaptorGrantInfo::getPrivilegeInfo)
+                .flatMap(Set::stream)
                 .map(RaptorPrivilegeInfo::getRaptorPrivilege)
                 .collect(Collectors.toSet());
 
-        return privilegeSet.containsAll(ImmutableSet.copyOf(requiredPrivileges));
+        return privileges.containsAll(ImmutableSet.copyOf(requiredPrivileges));
     }
 
     private boolean getGrantOptionForPrivilege(ConnectorTransactionHandle transaction, Identity identity, Privilege privilege, SchemaTableName tableName)
     {
-        RaptorGrantInfo grantInfo = dao.getGrantInfo(tableName.getSchemaName(), tableName.getTableName(), identity.getUser());
+        List<RaptorGrantInfo> grantInfos = dao.getGrantInfos(tableName.getSchemaName(), tableName.getTableName(), identity.getUser());
 
-        if (grantInfo == null) {
+        if (grantInfos == null) {
             return false;
         }
 
-        return grantInfo.getPrivilegeInfo().contains(new RaptorPrivilegeInfo(toRaptorPrivilege(privilege), true));
+        Set<PrivilegeInfo> privileges = grantInfos.stream()
+                .map(RaptorGrantInfo::getPrivilegeInfo)
+                .flatMap(Set::stream)
+                .map(RaptorPrivilegeInfo::toPrivilegeInfo)
+                .flatMap(Set::stream)
+                .collect(Collectors.toSet());
+
+        return privileges.contains(new PrivilegeInfo(privilege, true));
     }
 
     private boolean isAdmin(ConnectorTransactionHandle transaction, Identity identity)

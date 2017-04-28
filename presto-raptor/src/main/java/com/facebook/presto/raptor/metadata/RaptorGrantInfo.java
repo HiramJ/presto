@@ -14,7 +14,9 @@
 package com.facebook.presto.raptor.metadata;
 
 import com.facebook.presto.spi.SchemaTableName;
+import com.facebook.presto.spi.security.GrantInfo;
 import com.facebook.presto.spi.security.Identity;
+import com.facebook.presto.spi.security.PrivilegeInfo;
 import org.skife.jdbi.v2.StatementContext;
 import org.skife.jdbi.v2.tweak.ResultSetMapper;
 
@@ -23,6 +25,8 @@ import java.sql.SQLException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
 public class RaptorGrantInfo
 {
@@ -64,6 +68,16 @@ public class RaptorGrantInfo
     public Optional<Boolean> getWithHierarchy()
     {
         return withHierarchy;
+    }
+
+    public GrantInfo toGrantInfo()
+    {
+        Set<PrivilegeInfo> privileges = privilegeInfo.stream()
+                .map(RaptorPrivilegeInfo::toPrivilegeInfo)
+                .flatMap(Set::stream)
+                .collect(toImmutableSet());
+
+        return new GrantInfo(privileges, grantee, schemaTableName, grantor, withHierarchy);
     }
 
     @Override

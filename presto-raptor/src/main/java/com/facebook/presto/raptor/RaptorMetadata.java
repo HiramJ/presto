@@ -50,7 +50,6 @@ import com.facebook.presto.spi.connector.ConnectorPartitioningHandle;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.facebook.presto.spi.security.GrantInfo;
 import com.facebook.presto.spi.security.Privilege;
-import com.facebook.presto.spi.security.PrivilegeInfo;
 import com.facebook.presto.spi.type.Type;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
@@ -103,7 +102,6 @@ import static com.facebook.presto.raptor.RaptorTableProperties.getSortColumns;
 import static com.facebook.presto.raptor.RaptorTableProperties.getTemporalColumn;
 import static com.facebook.presto.raptor.RaptorTableProperties.isOrganized;
 import static com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.RaptorPrivilege.OWNERSHIP;
-import static com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.toMaskValue;
 import static com.facebook.presto.raptor.util.DatabaseUtil.daoTransaction;
 import static com.facebook.presto.raptor.util.DatabaseUtil.onDemandDao;
 import static com.facebook.presto.raptor.util.DatabaseUtil.runIgnoringConstraintViolation;
@@ -118,7 +116,6 @@ import static com.facebook.presto.spi.type.IntegerType.INTEGER;
 import static com.facebook.presto.spi.type.TimestampType.TIMESTAMP;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static io.airlift.json.JsonCodec.jsonCodec;
 import static java.lang.String.format;
@@ -905,20 +902,10 @@ public class RaptorMetadata
     {
         Table table = getTable(tableName);
 
-        long maskValue = toMaskValue(privileges.stream()
+        privileges.stream()
                 .map(RaptorPrivilegeInfo::toRaptorPrivilege)
-                .map(p -> new RaptorPrivilegeInfo(p, grantOption))
-                .collect(toImmutableSet()));
-
-        RaptorGrantInfo oldGrantInfo = dao.getGrantInfo(tableName.getSchemaName(), tableName.getTableName(), grantee);
-
-        if (oldGrantInfo == null) {
-            dao.insertTablePrivileges(table.getTableId(), grantee, session.getUser(), maskValue, grantOption, false);
-        }
-        else {
-            maskValue |= toMaskValue(oldGrantInfo.getPrivilegeInfo());
-            dao.updateTablePrivileges(table.getTableId(), grantee, maskValue);
-        }
+                .map(RaptorPrivilegeInfo.RaptorPrivilege::getMaskValue)
+                .forEach(mask -> dao.insertTablePrivileges(table.getTableId(), grantee, session.getUser(), mask, grantOption, false));
     }
 
     private Table getTable(SchemaTableName tableName)
@@ -937,20 +924,10 @@ public class RaptorMetadata
     {
         Table table = getTable(tableName);
 
-        RaptorGrantInfo oldGrantInfo = dao.getGrantInfo(tableName.getSchemaName(), tableName.getTableName(), grantee);
-        long maskValue = oldGrantInfo == null ? 0 : toMaskValue(oldGrantInfo.getPrivilegeInfo());
-
-        maskValue &= ~toMaskValue(privileges.stream()
+        privileges.stream()
                 .map(RaptorPrivilegeInfo::toRaptorPrivilege)
-                .map(p -> new RaptorPrivilegeInfo(p, grantOption))
-                .collect(toImmutableSet()));
-
-        if (maskValue == 0) {
-            dao.removeTablePrivileges(table.getTableId(), grantee);
-        }
-        else {
-            dao.updateTablePrivileges(table.getTableId(), grantee, maskValue);
-        }
+                .map(RaptorPrivilegeInfo.RaptorPrivilege::getMaskValue)
+                .forEach(mask -> dao.removeTablePrivileges(table.getTableId(), grantee, mask));
     }
 
     @Override
@@ -958,23 +935,14 @@ public class RaptorMetadata
     {
         ImmutableList.Builder<GrantInfo> grantInfos = ImmutableList.builder();
         for (SchemaTableName tableName : listTables(session, prefix)) {
-            RaptorGrantInfo info = dao.getGrantInfo(tableName.getSchemaName(), tableName.getTableName(), session.getIdentity().getUser());
-            if (info == null) {
+            List<RaptorGrantInfo> raptorGrantInfos = dao.getGrantInfos(tableName.getSchemaName(), tableName.getTableName(), session.getIdentity().getUser());
+            if (raptorGrantInfos == null) {
                 continue;
             }
 
-            Set<PrivilegeInfo> privileges = info.getPrivilegeInfo().stream()
-                    .map(RaptorPrivilegeInfo::toPrivilegeInfo)
-                    .flatMap(Set::stream)
-                    .collect(toImmutableSet());
-
-            grantInfos.add(
-                    new GrantInfo(
-                            privileges,
-                            session.getIdentity(),
-                            tableName,
-                            info.getGrantor(),
-                            info.getWithHierarchy()));
+            raptorGrantInfos.stream()
+                    .map(RaptorGrantInfo::toGrantInfo)
+                    .forEach(grantInfos::add);
         }
         return grantInfos.build();
     }

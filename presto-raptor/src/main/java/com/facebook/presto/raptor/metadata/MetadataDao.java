@@ -311,24 +311,20 @@ public interface MetadataDao
     void unblockAllMaintenance();
 
     @SqlQuery(TABLE_PREVILEGE_SELECT +
-            "WHERE t.schema_name = :schemaName" +
-            "  AND t.table_name = :tableName" +
+            "WHERE t.schema_name = :schemaName\n" +
+            "  AND t.table_name = :tableName\n" +
             "  AND p.grantee = :grantee")
     @Mapper(RaptorGrantInfo.Mapper.class)
-    RaptorGrantInfo getGrantInfo(@Bind("schemaName") String schemaName, @Bind("tableName") String tableName, @Bind("grantee") String grantee);
+    List<RaptorGrantInfo> getGrantInfos(@Bind("schemaName") String schemaName, @Bind("tableName") String tableName, @Bind("grantee") String grantee);
 
-    @SqlUpdate("INSERT INTO table_privileges (table_id, grantee, grantor, privilege_mask, is_grantable, with_hierarchy)\n" +
+    @SqlUpdate("REPLACE INTO table_privileges (table_id, grantee, grantor, privilege_mask, is_grantable, with_hierarchy)\n" +
             "VALUES (:tableId, :grantee, :grantor, :privilegeMask, :isGrantable, :withHierarchy)")
     void insertTablePrivileges(@Bind("tableId") long tableId, @Bind("grantee") String grantee, @Bind("grantor") String grantor,
             @Bind("privilegeMask") long privilegeMask, @Bind("isGrantable") boolean isGrantable, @Bind("withHierarchy") boolean withHierarchy);
 
     @SqlUpdate("DELETE from table_privileges\n" +
             "WHERE table_id = :tableId\n" +
-            "  AND grantee = :grantee")
-    void removeTablePrivileges(@Bind("tableId") long tableId, @Bind("grantee") String grantee);
-
-    @SqlUpdate("UPDATE table_privileges SET privilege_mask = :privilegeMask\n" +
-            "WHERE table_id = :tableId\n" +
-            "  AND grantee = :grantee")
-    void updateTablePrivileges(@Bind("tableId") long tableId, @Bind("grantee") String grantee, @Bind("privilegeMask") long privilegeMask);
+            "  AND grantee = :grantee\n" +
+            "  AND privilege_mask = :privilegeMask")
+    void removeTablePrivileges(@Bind("tableId") long tableId, @Bind("grantee") String grantee, @Bind("privilegeMask") long privilegeMask);
 }

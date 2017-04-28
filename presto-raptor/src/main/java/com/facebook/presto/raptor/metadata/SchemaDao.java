@@ -167,8 +167,7 @@ public interface SchemaDao
             "  privilege_mask BIGINT,\n" +
             "  is_grantable BOOLEAN,\n" +
             "  with_hierarchy BOOLEAN,\n" +
-            "  PRIMARY KEY (table_id, grantee),\n" +
-            "  UNIQUE (table_id, grantee),\n" +
+            "  PRIMARY KEY (table_id, grantee, privilege_mask),\n" +
             "  FOREIGN KEY (table_id) REFERENCES tables (table_id) ON DELETE CASCADE\n" +
             ")")
     void createTableTablePrivileges();
