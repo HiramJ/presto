@@ -11,14 +11,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.raptor.acl;
+package com.facebook.presto.raptor.security;
 
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.security.Identity;
 
+import java.util.Set;
+
 public interface IdentityManager
 {
-    boolean isAdmin(ConnectorTransactionHandle transaction, Identity identity);
+    String ADMIN_ROLE = "admin";
+    String PUBLIC_ROLE = "public";
 
-    boolean isDatabaseOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName);
+    default boolean isAdmin(ConnectorTransactionHandle transaction, Identity identity)
+    {
+        return getRoles(transaction, identity).stream()
+                .anyMatch(r -> r.equalsIgnoreCase(ADMIN_ROLE));
+    }
+
+    Set<String> getRoles(ConnectorTransactionHandle transaction, Identity identity);
+
+    boolean isSchemaOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName);
 }

@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.raptor.acl;
+package com.facebook.presto.raptor.security;
 
 import io.airlift.configuration.Config;
 
@@ -28,7 +28,7 @@ public class FileBasedIdentityConfig
         return groupsFileName;
     }
 
-    @Config("acl.groups-file")
+    @Config("security.roles-file")
     public FileBasedIdentityConfig setGroupsFileName(String groupsFileName)
     {
         this.groupsFileName = groupsFileName;
@@ -41,7 +41,7 @@ public class FileBasedIdentityConfig
         return schemaOwnersFileName;
     }
 
-    @Config("acl.schema-owners-file")
+    @Config("security.schema-owners-file")
     public FileBasedIdentityConfig setSchemaOwnersFileName(String schemaOwnersFileName)
     {
         this.schemaOwnersFileName = schemaOwnersFileName;

@@ -11,11 +11,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.raptor.acl;
+package com.facebook.presto.raptor.security;
 
 import io.airlift.configuration.Config;
 
-public class AclConfig
+public class SecurityConfig
 {
     private boolean enabled;
 
@@ -24,8 +24,8 @@ public class AclConfig
         return enabled;
     }
 
-    @Config("acl.enabled")
-    public AclConfig setEnabled(boolean enabled)
+    @Config("security.enabled")
+    public SecurityConfig setEnabled(boolean enabled)
     {
         this.enabled = enabled;
         return this;

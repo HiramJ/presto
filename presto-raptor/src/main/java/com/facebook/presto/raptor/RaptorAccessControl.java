@@ -13,12 +13,12 @@
  */
 package com.facebook.presto.raptor;
 
-import com.facebook.presto.raptor.acl.IdentityManager;
 import com.facebook.presto.raptor.metadata.ForMetadata;
 import com.facebook.presto.raptor.metadata.MetadataDao;
 import com.facebook.presto.raptor.metadata.RaptorGrantInfo;
 import com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo;
 import com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.RaptorPrivilege;
+import com.facebook.presto.raptor.security.IdentityManager;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.connector.ConnectorAccessControl;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
@@ -60,7 +60,7 @@ import static com.facebook.presto.spi.security.AccessDeniedException.denySetCata
 import static java.util.Objects.requireNonNull;
 
 public class RaptorAccessControl
-    implements ConnectorAccessControl
+        implements ConnectorAccessControl
 {
     private static final String INFORMATION_SCHEMA_NAME = "information_schema";
 
@@ -289,6 +289,6 @@ public class RaptorAccessControl
 
     private boolean isDatabaseOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName)
     {
-        return identityManager.isDatabaseOwner(transaction, identity, schemaName);
+        return identityManager.isSchemaOwner(transaction, identity, schemaName);
     }
 }

@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.raptor.acl;
+package com.facebook.presto.raptor.security;
 
 import com.facebook.presto.plugin.base.security.AllowAllAccessControl;
 import com.facebook.presto.raptor.RaptorAccessControl;
@@ -24,14 +24,14 @@ import io.airlift.configuration.AbstractConfigurationAwareModule;
 import static io.airlift.configuration.ConditionalModule.installModuleIf;
 import static io.airlift.configuration.ConfigBinder.configBinder;
 
-public class AclModule
+public class SecurityModule
         extends AbstractConfigurationAwareModule
 {
     @Override
     protected void setup(Binder ignored)
     {
         install(installModuleIf(
-                AclConfig.class,
+                SecurityConfig.class,
                 config -> config.isEnabled(),
                 binder -> {
                     install(new FileBasedIdentityModule());
@@ -39,7 +39,7 @@ public class AclModule
                 }));
 
         install(installModuleIf(
-                AclConfig.class,
+                SecurityConfig.class,
                 config -> !config.isEnabled(),
                 binder -> {
                     binder.bind(ConnectorAccessControl.class).to(AllowAllAccessControl.class).in(Scopes.SINGLETON);

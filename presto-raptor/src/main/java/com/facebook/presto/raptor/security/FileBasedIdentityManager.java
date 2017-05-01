@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.raptor.acl;
+package com.facebook.presto.raptor.security;
 
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
@@ -20,6 +20,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet.Builder;
 import com.google.inject.Inject;
 
 import java.io.File;
@@ -32,8 +34,7 @@ import static com.facebook.presto.raptor.RaptorErrorCode.RAPTOR_ERROR;
 public class FileBasedIdentityManager
         implements IdentityManager
 {
-    private static final String ADMIN_GROUP = "ADMIN";
-    private final Map<String, Group> groups;
+    private final Map<String, Role> roles;
     private final Map<String, SchemaOwners> schemaOwners;
 
     @Inject
@@ -41,7 +42,7 @@ public class FileBasedIdentityManager
     {
         ObjectMapper mapper = new ObjectMapper();
         try {
-            this.groups = mapper.readValue(new File(config.getGroupsFileName()), new TypeReference<Map<String, Group>>() {});
+            this.roles = mapper.readValue(new File(config.getGroupsFileName()), new TypeReference<Map<String, Role>>() {});
             this.schemaOwners = mapper.readValue(new File(config.getSchemaOwnersFileName()), new TypeReference<Map<String, SchemaOwners>>() {});
         }
         catch (IOException e) {
@@ -50,17 +51,19 @@ public class FileBasedIdentityManager
     }
 
     @Override
-    public boolean isAdmin(ConnectorTransactionHandle transaction, Identity identity)
+    public Set<String> getRoles(ConnectorTransactionHandle transaction, Identity identity)
     {
-        Group admin = groups.get(ADMIN_GROUP);
-        if (admin == null || !admin.getUsers().contains(identity.getUser())) {
-            return false;
-        }
-        return true;
+        Builder<String> roles = ImmutableSet.builder();
+        this.roles.entrySet().stream()
+                .filter(e -> e.getValue().hasUser(identity.getUser()))
+                .forEach(e -> roles.add(e.getKey()));
+        roles.add(PUBLIC_ROLE);
+
+        return roles.build();
     }
 
     @Override
-    public boolean isDatabaseOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName)
+    public boolean isSchemaOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName)
     {
         SchemaOwners owners = schemaOwners.get(schemaName);
         if (owners == null) {
@@ -70,17 +73,17 @@ public class FileBasedIdentityManager
             return true;
         }
 
-        return owners.getGroups().stream()
-                .map(groups::get)
+        return owners.getRoles().stream()
+                .map(roles::get)
                 .anyMatch(g -> g.hasUser(identity.getUser()));
     }
 
-    private static class Group
+    private static class Role
     {
         private final Set<String> users;
 
         @JsonCreator
-        Group(@JsonProperty("users") Set<String> users)
+        Role(@JsonProperty("users") Set<String> users)
         {
             this.users = users;
         }
@@ -98,19 +101,19 @@ public class FileBasedIdentityManager
 
     private static class SchemaOwners
     {
-        private final Set<String> groups;
+        private final Set<String> roles;
         private final Set<String> users;
 
         @JsonCreator
-        SchemaOwners(@JsonProperty("groups") Set<String> groups, @JsonProperty("users") Set<String> users)
+        SchemaOwners(@JsonProperty("roles") Set<String> roles, @JsonProperty("users") Set<String> users)
         {
-            this.groups = groups;
+            this.roles = roles;
             this.users = users;
         }
 
-        public Set<String> getGroups()
+        public Set<String> getRoles()
         {
-            return groups;
+            return roles;
         }
 
         public Set<String> getUsers()
