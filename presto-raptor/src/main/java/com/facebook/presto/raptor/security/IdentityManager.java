@@ -16,8 +16,6 @@ package com.facebook.presto.raptor.security;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.security.Identity;
 
-import java.util.Set;
-
 public interface IdentityManager
 {
     String ADMIN_ROLE = "admin";
@@ -25,11 +23,10 @@ public interface IdentityManager
 
     default boolean isAdmin(ConnectorTransactionHandle transaction, Identity identity)
     {
-        return getRoles(transaction, identity).stream()
-                .anyMatch(r -> r.equalsIgnoreCase(ADMIN_ROLE));
+        return belongsToRole(transaction, identity, ADMIN_ROLE);
     }
 
-    Set<String> getRoles(ConnectorTransactionHandle transaction, Identity identity);
+    boolean belongsToRole(ConnectorTransactionHandle transaction, Identity identity, String role);
 
     boolean isSchemaOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName);
 }

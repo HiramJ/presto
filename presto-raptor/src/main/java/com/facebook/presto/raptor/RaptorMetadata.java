@@ -936,9 +936,6 @@ public class RaptorMetadata
         ImmutableList.Builder<GrantInfo> grantInfos = ImmutableList.builder();
         for (SchemaTableName tableName : listTables(session, prefix)) {
             List<RaptorGrantInfo> raptorGrantInfos = dao.getGrantInfos(tableName.getSchemaName(), tableName.getTableName(), session.getIdentity().getUser());
-            if (raptorGrantInfos == null) {
-                continue;
-            }
 
             raptorGrantInfos.stream()
                     .map(RaptorGrantInfo::toGrantInfo)

@@ -47,7 +47,6 @@ import static com.facebook.presto.spi.security.AccessDeniedException.denyCreateV
 import static com.facebook.presto.spi.security.AccessDeniedException.denyDeleteTable;
 import static com.facebook.presto.spi.security.AccessDeniedException.denyDropSchema;
 import static com.facebook.presto.spi.security.AccessDeniedException.denyDropTable;
-import static com.facebook.presto.spi.security.AccessDeniedException.denyDropView;
 import static com.facebook.presto.spi.security.AccessDeniedException.denyGrantTablePrivilege;
 import static com.facebook.presto.spi.security.AccessDeniedException.denyInsertTable;
 import static com.facebook.presto.spi.security.AccessDeniedException.denyRenameColumn;
@@ -55,7 +54,6 @@ import static com.facebook.presto.spi.security.AccessDeniedException.denyRenameS
 import static com.facebook.presto.spi.security.AccessDeniedException.denyRenameTable;
 import static com.facebook.presto.spi.security.AccessDeniedException.denyRevokeTablePrivilege;
 import static com.facebook.presto.spi.security.AccessDeniedException.denySelectTable;
-import static com.facebook.presto.spi.security.AccessDeniedException.denySelectView;
 import static com.facebook.presto.spi.security.AccessDeniedException.denySetCatalogSessionProperty;
 import static java.util.Objects.requireNonNull;
 
@@ -85,14 +83,14 @@ public class RaptorAccessControl
 
     public void checkCanDropSchema(ConnectorTransactionHandle transactionHandle, Identity identity, String schemaName)
     {
-        if (!isDatabaseOwner(transactionHandle, identity, schemaName)) {
+        if (!isSchemaOwner(transactionHandle, identity, schemaName)) {
             denyDropSchema(schemaName);
         }
     }
 
     public void checkCanRenameSchema(ConnectorTransactionHandle transactionHandle, Identity identity, String schemaName, String newSchemaName)
     {
-        if (!isAdmin(transactionHandle, identity) || !isDatabaseOwner(transactionHandle, identity, schemaName)) {
+        if (!isAdmin(transactionHandle, identity) || !isSchemaOwner(transactionHandle, identity, schemaName)) {
             denyRenameSchema(schemaName, newSchemaName);
         }
     }
@@ -108,7 +106,7 @@ public class RaptorAccessControl
 
     public void checkCanCreateTable(ConnectorTransactionHandle transactionHandle, Identity identity, SchemaTableName tableName)
     {
-        if (!isDatabaseOwner(transactionHandle, identity, tableName.getSchemaName())) {
+        if (!isSchemaOwner(transactionHandle, identity, tableName.getSchemaName())) {
             denyCreateTable(tableName.toString());
         }
     }
@@ -173,23 +171,19 @@ public class RaptorAccessControl
 
     public void checkCanCreateView(ConnectorTransactionHandle transactionHandle, Identity identity, SchemaTableName viewName)
     {
-        if (!isDatabaseOwner(transactionHandle, identity, viewName.getSchemaName())) {
+        if (!isSchemaOwner(transactionHandle, identity, viewName.getSchemaName())) {
             denyCreateView(viewName.toString());
         }
     }
 
     public void checkCanDropView(ConnectorTransactionHandle transactionHandle, Identity identity, SchemaTableName viewName)
     {
-        if (!checkTablePermission(transactionHandle, identity, viewName, OWNERSHIP)) {
-            denyDropView(viewName.toString());
-        }
+        // todo: add check for this
     }
 
     public void checkCanSelectFromView(ConnectorTransactionHandle transactionHandle, Identity identity, SchemaTableName viewName)
     {
-        if (!checkTablePermission(transactionHandle, identity, viewName, SELECT)) {
-            denySelectView(viewName.toString());
-        }
+        // todo: add check for this
     }
 
     public void checkCanCreateViewWithSelectFromTable(ConnectorTransactionHandle transactionHandle, Identity identity, SchemaTableName tableName)
@@ -204,12 +198,7 @@ public class RaptorAccessControl
 
     public void checkCanCreateViewWithSelectFromView(ConnectorTransactionHandle transactionHandle, Identity identity, SchemaTableName viewName)
     {
-        if (!checkTablePermission(transactionHandle, identity, viewName, SELECT)) {
-            denySelectView(viewName.toString());
-        }
-        if (!getGrantOptionForPrivilege(transactionHandle, identity, Privilege.SELECT, viewName)) {
-            denyCreateViewWithSelect(viewName.toString());
-        }
+        // todo: add check for this
     }
 
     public void checkCanSetCatalogSessionProperty(Identity identity, String propertyName)
@@ -287,7 +276,7 @@ public class RaptorAccessControl
         return identityManager.isAdmin(transaction, identity);
     }
 
-    private boolean isDatabaseOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName)
+    private boolean isSchemaOwner(ConnectorTransactionHandle transaction, Identity identity, String schemaName)
     {
         return identityManager.isSchemaOwner(transaction, identity, schemaName);
     }

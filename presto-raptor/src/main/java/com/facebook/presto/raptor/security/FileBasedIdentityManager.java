@@ -20,8 +20,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSet.Builder;
 import com.google.inject.Inject;
 
 import java.io.File;
@@ -51,15 +49,15 @@ public class FileBasedIdentityManager
     }
 
     @Override
-    public Set<String> getRoles(ConnectorTransactionHandle transaction, Identity identity)
+    public boolean belongsToRole(ConnectorTransactionHandle transaction, Identity identity, String role)
     {
-        Builder<String> roles = ImmutableSet.builder();
-        this.roles.entrySet().stream()
-                .filter(e -> e.getValue().hasUser(identity.getUser()))
-                .forEach(e -> roles.add(e.getKey()));
-        roles.add(PUBLIC_ROLE);
+        if (role.equalsIgnoreCase(PUBLIC_ROLE)) {
+            return true;
+        }
 
-        return roles.build();
+        Role roleToCheck = roles.get(role);
+
+        return roleToCheck != null && roleToCheck.hasUser(identity.getUser());
     }
 
     @Override
