@@ -105,7 +105,7 @@ public class RaptorConnector
         this.systemTables = requireNonNull(systemTables, "systemTables is null");
         this.dao = onDemandDao(dbi, MetadataDao.class);
         this.coordinator = nodeManager.getCurrentNode().isCoordinator();
-        this.accessControl = accessControl;
+        this.accessControl = requireNonNull(accessControl, "accessControl is null");
     }
 
     @PostConstruct

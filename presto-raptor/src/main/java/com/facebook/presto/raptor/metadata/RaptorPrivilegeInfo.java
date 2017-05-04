@@ -28,14 +28,15 @@ import static com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.RaptorPriv
 import static com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.RaptorPrivilege.SELECT;
 import static com.facebook.presto.raptor.metadata.RaptorPrivilegeInfo.RaptorPrivilege.UPDATE;
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.util.Objects.requireNonNull;
 
 public class RaptorPrivilegeInfo
 {
-    private final RaptorPrivilege ratporPrivilege;
+    private final RaptorPrivilege raptorPrivilege;
     private final boolean grantOption;
-    public RaptorPrivilegeInfo(RaptorPrivilege ratporPrivilege, boolean grantOption)
+    public RaptorPrivilegeInfo(RaptorPrivilege raptorPrivilege, boolean grantOption)
     {
-        this.ratporPrivilege = ratporPrivilege;
+        this.raptorPrivilege = requireNonNull(raptorPrivilege, "raptorPrivilege is null");
         this.grantOption = grantOption;
     }
 
@@ -88,7 +89,7 @@ public class RaptorPrivilegeInfo
 
     public RaptorPrivilege getRaptorPrivilege()
     {
-        return ratporPrivilege;
+        return raptorPrivilege;
     }
 
     public boolean isGrantOption()
@@ -118,7 +119,7 @@ public class RaptorPrivilegeInfo
     @Override
     public int hashCode()
     {
-        return Objects.hash(ratporPrivilege, grantOption);
+        return Objects.hash(raptorPrivilege, grantOption);
     }
 
     @Override
@@ -131,7 +132,7 @@ public class RaptorPrivilegeInfo
             return false;
         }
         RaptorPrivilegeInfo ratporPrivilegeInfo = (RaptorPrivilegeInfo) o;
-        return Objects.equals(ratporPrivilege, ratporPrivilegeInfo.ratporPrivilege) &&
+        return Objects.equals(raptorPrivilege, ratporPrivilegeInfo.raptorPrivilege) &&
                 Objects.equals(grantOption, ratporPrivilegeInfo.grantOption);
     }
 
@@ -139,7 +140,7 @@ public class RaptorPrivilegeInfo
     public String toString()
     {
         return toStringHelper(this)
-                .add("privilege", ratporPrivilege)
+                .add("privilege", raptorPrivilege)
                 .add("grantOption", grantOption)
                 .toString();
     }

@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static java.util.Objects.requireNonNull;
 
 public class RaptorGrantInfo
 {
@@ -38,11 +39,11 @@ public class RaptorGrantInfo
 
     public RaptorGrantInfo(Set<RaptorPrivilegeInfo> privilegeInfo, Identity grantee, SchemaTableName schemaTableName, Optional<Identity> grantor, Optional<Boolean> withHierarchy)
     {
-        this.privilegeInfo = privilegeInfo;
-        this.grantee = grantee;
-        this.schemaTableName = schemaTableName;
-        this.grantor = grantor;
-        this.withHierarchy = withHierarchy;
+        this.privilegeInfo = requireNonNull(privilegeInfo, "privilegeInfo is null");
+        this.grantee = requireNonNull(grantee, "grantee is null");
+        this.schemaTableName = requireNonNull(schemaTableName, "schemaTableName is null");
+        this.grantor = requireNonNull(grantor, "grantor is null");
+        this.withHierarchy = requireNonNull(withHierarchy, "withHierarchy is null");
     }
 
     public Set<RaptorPrivilegeInfo> getPrivilegeInfo()
