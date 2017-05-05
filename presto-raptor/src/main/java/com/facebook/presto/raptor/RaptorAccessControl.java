@@ -25,10 +25,10 @@ import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.security.Identity;
 import com.facebook.presto.spi.security.Privilege;
 import com.facebook.presto.spi.security.PrivilegeInfo;
-import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import org.skife.jdbi.v2.IDBI;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -240,17 +240,19 @@ public class RaptorAccessControl
 
         List<RaptorGrantInfo> raptorGrantInfos = dao.getGrantInfos(tableName.getSchemaName(), tableName.getTableName(), identity.getUser());
 
-        if (raptorGrantInfos == null) {
-            return false;
-        }
-
-        Set<RaptorPrivilege> privileges = raptorGrantInfos.stream()
+        long maskOnFile = raptorGrantInfos.stream()
                 .map(RaptorGrantInfo::getPrivilegeInfo)
                 .flatMap(Set::stream)
                 .map(RaptorPrivilegeInfo::getRaptorPrivilege)
-                .collect(Collectors.toSet());
+                .mapToLong(RaptorPrivilege::getMaskValue)
+                .reduce(0, (a, b) -> a | b);
 
-        return privileges.containsAll(ImmutableSet.copyOf(requiredPrivileges));
+        long maskRequired = Arrays.stream(requiredPrivileges)
+                .mapToLong(RaptorPrivilege::getMaskValue)
+                .reduce(0, (a, b) -> a | b);
+
+        return maskOnFile != 0 &&
+                (maskOnFile & maskRequired) == maskRequired;
     }
 
     private boolean getGrantOptionForPrivilege(ConnectorTransactionHandle transaction, Identity identity, Privilege privilege, SchemaTableName tableName)

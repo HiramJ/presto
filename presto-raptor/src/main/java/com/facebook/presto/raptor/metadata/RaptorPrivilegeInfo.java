@@ -147,11 +147,11 @@ public class RaptorPrivilegeInfo
 
     public enum RaptorPrivilege
     {
-        SELECT(1),
-        INSERT(2),
-        UPDATE(4),
-        DELETE(8),
-        OWNERSHIP(16);
+        SELECT(1),      // 0001
+        INSERT(2),      // 0010
+        UPDATE(4),      // 0100
+        DELETE(8),      // 1000
+        OWNERSHIP(31);  // 1111
 
         private final long maskValue;
 

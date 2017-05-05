@@ -22,8 +22,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,8 +40,8 @@ public class FileBasedIdentityManager
     {
         ObjectMapper mapper = new ObjectMapper();
         try {
-            this.roles = mapper.readValue(new File(config.getGroupsFileName()), new TypeReference<Map<String, Role>>() {});
-            this.schemaOwners = mapper.readValue(new File(config.getSchemaOwnersFileName()), new TypeReference<Map<String, SchemaOwners>>() {});
+            this.roles = mapper.readValue(Paths.get(config.getGroupsFileName()).toFile(), new TypeReference<Map<String, Role>>() {});
+            this.schemaOwners = mapper.readValue(Paths.get(config.getSchemaOwnersFileName()).toFile(), new TypeReference<Map<String, SchemaOwners>>() {});
         }
         catch (IOException e) {
             throw new PrestoException(RAPTOR_ERROR, "failed to load identity config", e);
@@ -73,7 +73,7 @@ public class FileBasedIdentityManager
 
         return owners.getRoles().stream()
                 .map(roles::get)
-                .anyMatch(g -> g.hasUser(identity.getUser()));
+                .anyMatch(g -> g != null && g.hasUser(identity.getUser()));
     }
 
     private static class Role
