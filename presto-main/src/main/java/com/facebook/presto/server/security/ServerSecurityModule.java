@@ -17,6 +17,7 @@ import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
+import com.google.inject.name.Names;
 import io.airlift.configuration.AbstractConfigurationAwareModule;
 import io.airlift.http.server.TheServlet;
 
@@ -26,6 +27,7 @@ import java.util.function.Predicate;
 
 import static com.facebook.presto.server.security.SecurityConfig.AuthenticationType.KERBEROS;
 import static com.facebook.presto.server.security.SecurityConfig.AuthenticationType.LDAP;
+import static com.facebook.presto.server.security.SecurityConfig.AuthenticationType.MIXED;
 import static io.airlift.configuration.ConditionalModule.installModuleIf;
 import static io.airlift.configuration.ConfigBinder.configBinder;
 
@@ -54,6 +56,20 @@ public class ServerSecurityModule
                                     .to(LdapFilter.class)
                                     .in(Scopes.SINGLETON);
                 });
+
+        bindSecurityConfig(
+                securityConfig -> securityConfig.getAuthenticationType() == MIXED,
+                binder -> {
+                    configBinder(binder).bindConfig(KerberosConfig.class);
+                    configBinder(binder).bindConfig(LdapConfig.class);
+                    binder.bind(Filter.class).annotatedWith(Names.named("ldap")).to(LdapFilter.class);
+                    binder.bind(Filter.class).annotatedWith(Names.named("kerberos")).to(SpnegoFilter.class);
+                    Multibinder.newSetBinder(binder, Filter.class, TheServlet.class)
+                            .addBinding()
+                            .to(MixedFilter.class)
+                            .in(Scopes.SINGLETON);
+                }
+        );
     }
 
     private void bindSecurityConfig(Predicate<SecurityConfig> predicate, Module module)

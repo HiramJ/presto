@@ -28,7 +28,8 @@ public class SecurityConfig
     {
         NONE,
         KERBEROS,
-        LDAP
+        LDAP,
+        MIXED
     }
 
     @NotNull
@@ -38,7 +39,7 @@ public class SecurityConfig
     }
 
     @Config("http-server.authentication.type")
-    @ConfigDescription("Authentication type (supported types: NONE, KERBEROS, LDAP)")
+    @ConfigDescription("Authentication type (supported types: NONE, KERBEROS, LDAP, MIXED)")
     public SecurityConfig setAuthenticationType(AuthenticationType authenticationType)
     {
         this.authenticationType = authenticationType;
