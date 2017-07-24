@@ -28,15 +28,12 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.Enumeration;
 
-import static javax.ws.rs.core.HttpHeaders.USER_AGENT;
-
 public class MixedFilter
         implements Filter
 {
     private static final Logger LOG = Logger.get(MixedFilter.class);
 
-    private static final String INCLUDE_REALM_HEADER = "X-Airlift-Realm-In-Challenge";
-    private static final String DAIQUERY = "flib";
+    private static final String SOURCE = "X-Presto-Source";
 
     private final Filter ldapFilter;
     private final Filter krbFilter;
@@ -70,18 +67,13 @@ public class MixedFilter
 
         dumpRequest(request);
 
-        if (request.getHeader(INCLUDE_REALM_HEADER) != null) {
-            krbFilter.doFilter(servletRequest, servletResponse, nextFilter);
+        String source = request.getHeader(SOURCE);
+        if (source != null && (source.equalsIgnoreCase("jdbc") || source.equalsIgnoreCase("odbc"))) {
+            ldapFilter.doFilter(servletRequest, servletResponse, nextFilter);
             return;
         }
 
-        String agent = request.getHeader(USER_AGENT);
-        if (agent != null && agent.startsWith(DAIQUERY)) {
-            nextFilter.doFilter(servletRequest, servletResponse);
-            return;
-        }
-
-        ldapFilter.doFilter(servletRequest, servletResponse, nextFilter);
+        krbFilter.doFilter(servletRequest, servletResponse, nextFilter);
     }
 
     private void dumpRequest(HttpServletRequest request)
